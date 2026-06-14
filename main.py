@@ -2,20 +2,23 @@ import os
 import subprocess
 import librosa
 import numpy as np
-import soundfile as sf   # pip install soundfile — saves the pitch-shifted instrumental
-import math              # log2 for semitone calculation
+import soundfile as sf
+import math
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-app = FastAPI(title="Sarang Audio Engine")
-app.mount("/temp_separated", StaticFiles(directory="temp_separated"), name="temp_separated")
+import torch
 
-# Temporary directories for processing
+app = FastAPI(title="Sarang Audio Engine")
+
+# 1. Define and create the directories FIRST
 UPLOAD_DIR = "temp_uploads"
 OUTPUT_DIR = "temp_separated"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# 2. THEN mount the static files directory
+app.mount("/temp_separated", StaticFiles(directory=OUTPUT_DIR), name="temp_separated")
 
 @app.post("/process-track")
 async def process_track(
@@ -41,7 +44,7 @@ async def process_track(
         "demucs",
         "--two-stems=vocals",
         "-n", "htdemucs",
-        "-d", "cuda",
+        "-d", "cuda" if torch.cuda.is_available() else "cpu",
         "-o", OUTPUT_DIR,
         file_path
     ]
